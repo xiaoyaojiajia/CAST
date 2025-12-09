@@ -4,6 +4,9 @@ import torch.nn.functional as F
 from layers.Embed import DataEmbedding_inverted
 from layers.Transformer_EncDec import Encoder, EncoderLayer
 
+# =============================================================================
+# 1. 气候感知变形对齐器 (Climate-Aware Deformable Aligner)
+# =============================================================================
 class ClimateAwareDeformableAligner(nn.Module):
     def __init__(self, c_in, seq_len, n_groups=8, offset_range_factor=10.0, use_weather=True, weather_dim=4):
         super().__init__()
@@ -12,8 +15,7 @@ class ClimateAwareDeformableAligner(nn.Module):
         self.seq_len = seq_len
         self.use_weather = use_weather
         
-        # [Fix 1] 修正分组维度的计算逻辑
-        # 必须考虑 forward 过程中的 Padding，确保维度对齐
+        # [逻辑修复] 修正分组维度的计算逻辑 (兼容 Padding)
         if c_in % n_groups == 0:
             self.group_dim = c_in // n_groups
         else:
@@ -56,7 +58,9 @@ class ClimateAwareDeformableAligner(nn.Module):
         
         # 构建预测器输入
         if self.use_weather and x_ext is not None:
+            # x_ext: [B, L, D_w] -> [B, D_w, L]
             x_ext = x_ext.permute(0, 2, 1)
+            # 扩展到所有 group: [B * Groups, D_w, L]
             x_ext_expanded = x_ext.repeat(self.n_groups, 1, 1)
             predictor_input = torch.cat([x_grouped, x_ext_expanded], dim=1)
         else:
@@ -72,12 +76,9 @@ class ClimateAwareDeformableAligner(nn.Module):
         # 变形重采样
         ref_points = self._get_ref_points(L, B, x.dtype, x.device)
         
-        # 构造采样 Grid: x = time + offset, y = 0
+        # [逻辑修复] 修正 permute 维度顺序，从 (0, 2, 3, 1) 改为 (0, 2, 1, 3)
         grid_x = (ref_points + offset_norm.unsqueeze(-1)).clamp(-1, 1)
         grid_y = torch.zeros_like(grid_x)
-        
-        # [Fix 2] 修正 permute 维度顺序，从 (0, 2, 3, 1) 改为 (0, 2, 1, 3)
-        # 目标形状: [B*G, L, 1, 2]
         grid = torch.cat([grid_x, grid_y], dim=-1).permute(0, 2, 1, 3) 
         
         x_grouped_expanded = x_grouped.unsqueeze(-1)
@@ -101,7 +102,9 @@ class ClimateAwareDeformableAligner(nn.Module):
         
         return x_out, offset
 
-# SOFTS 的 STAR 模块 (复用)
+# =============================================================================
+# 2. SOFTS 核心模块: STAR (复用)
+# =============================================================================
 class STAR(nn.Module):
     def __init__(self, d_series, d_core):
         super(STAR, self).__init__()
@@ -121,6 +124,9 @@ class STAR(nn.Module):
         output = self.gen4(combined_mean_cat)
         return output, None
 
+# =============================================================================
+# 3. 主模型: CAST (含 Fix: weather_dim 动态适配)
+# =============================================================================
 class Model(nn.Module):
     def __init__(self, configs):
         super(Model, self).__init__()
@@ -130,15 +136,22 @@ class Model(nn.Module):
         
         # 动态设置 Group 数量
         num_groups = min(configs.enc_in, 8) 
-        weather_dim = 4 # 假设时间特征维度为4
         
+        # [逻辑修复] 根据数据集类型动态设置 weather_dim
+        # PEMS 数据集的 mark 维度是 1，ETT 等数据集通常是 4
+        if configs.data == 'PEMS':
+            weather_dim = 1
+        else:
+            # 默认假设为 4 (月,日,周,时)
+            weather_dim = 4
+            
         self.aligner = ClimateAwareDeformableAligner(
             c_in=configs.enc_in, 
             seq_len=configs.seq_len,
             n_groups=num_groups,
             offset_range_factor=10.0,
             use_weather=True,
-            weather_dim=weather_dim
+            weather_dim=weather_dim # 传入正确的维度
         )
         
         self.enc_embedding = DataEmbedding_inverted(configs.seq_len, configs.d_model, configs.dropout)

@@ -1,6 +1,6 @@
 from data_provider.data_factory import data_provider
 from exp.exp_basic import Exp_Basic
-from models import CAST, SOFTS # 如果你想对比 SOFTS，可以保留 import SOFTS
+from models import CAST # 如果你想对比 SOFTS，可以保留 import SOFTS
 from utils.tools import EarlyStopping, adjust_learning_rate
 from utils.metrics import metric
 import torch
@@ -20,7 +20,7 @@ class Exp_Main(Exp_Basic):
     def _build_model(self):
         model_dict = {
             'CAST': CAST,
-            'SOFTS': SOFTS, # 注册 SOFTS 以便对比
+            # 'SOFTS': SOFTS, # 注册 SOFTS 以便对比
         }
         model = model_dict[self.args.model].Model(self.args).float()
         if self.args.use_multi_gpu and self.args.use_gpu:

@@ -8,9 +8,9 @@ python -u run.py \
   --model CAST \
   --data PEMS \
   --features M \
-  --seq_len 12 \
+  --seq_len 96 \
   --label_len 48 \
-  --pred_len 12 \
+  --pred_len 48 \
   --e_layers 2 \
   --d_model 128 \
   --d_core 128 \
