@@ -12,20 +12,16 @@ class ClimateAwareDeformableAligner(nn.Module):
         self.seq_len = seq_len
         self.use_weather = use_weather
         
-        # ==========================================================
-        # [Fix] 修正分组维度的计算逻辑
+        # [Fix 1] 修正分组维度的计算逻辑
         # 必须考虑 forward 过程中的 Padding，确保维度对齐
-        # ==========================================================
         if c_in % n_groups == 0:
             self.group_dim = c_in // n_groups
         else:
             # 如果不能整除，forward 会补齐到最近的 n_groups 倍数
-            # 计算补齐后的总维度
             pad_c = n_groups - (c_in % n_groups)
             self.group_dim = (c_in + pad_c) // n_groups
 
-        # 偏移预测器输入维度
-        # Group特征 + 天气/时间特征
+        # 偏移预测器输入维度 = Group特征 + 天气/时间特征
         predictor_in_dim = self.group_dim + (weather_dim if use_weather else 0)
         
         self.offset_conv = nn.Sequential(
@@ -60,7 +56,6 @@ class ClimateAwareDeformableAligner(nn.Module):
         
         # 构建预测器输入
         if self.use_weather and x_ext is not None:
-            # x_ext: [B, L, D_w] -> [B, D_w, L]
             x_ext = x_ext.permute(0, 2, 1)
             x_ext_expanded = x_ext.repeat(self.n_groups, 1, 1)
             predictor_input = torch.cat([x_grouped, x_ext_expanded], dim=1)
@@ -81,7 +76,8 @@ class ClimateAwareDeformableAligner(nn.Module):
         grid_x = (ref_points + offset_norm.unsqueeze(-1)).clamp(-1, 1)
         grid_y = torch.zeros_like(grid_x)
         
-        # [Fix] 之前的 permute 错误也需要保留修正
+        # [Fix 2] 修正 permute 维度顺序，从 (0, 2, 3, 1) 改为 (0, 2, 1, 3)
+        # 目标形状: [B*G, L, 1, 2]
         grid = torch.cat([grid_x, grid_y], dim=-1).permute(0, 2, 1, 3) 
         
         x_grouped_expanded = x_grouped.unsqueeze(-1)
@@ -105,7 +101,7 @@ class ClimateAwareDeformableAligner(nn.Module):
         
         return x_out, offset
 
-# 下面的 STAR 和 Model 类保持不变
+# SOFTS 的 STAR 模块 (复用)
 class STAR(nn.Module):
     def __init__(self, d_series, d_core):
         super(STAR, self).__init__()
@@ -118,10 +114,8 @@ class STAR(nn.Module):
         batch_size, channels, d_series = input.shape
         combined_mean = F.gelu(self.gen1(input))
         combined_mean = self.gen2(combined_mean)
-        
         weight = F.softmax(combined_mean, dim=1)
         combined_mean = torch.sum(combined_mean * weight, dim=1, keepdim=True).repeat(1, channels, 1)
-        
         combined_mean_cat = torch.cat([input, combined_mean], -1)
         combined_mean_cat = F.gelu(self.gen3(combined_mean_cat))
         output = self.gen4(combined_mean_cat)

@@ -1,18 +1,13 @@
-from data_provider.data_loader import Dataset_ETT_hour, Dataset_ETT_minute, Dataset_Custom, Dataset_Solar, Dataset_PEMS, \
-    Dataset_Pred, Dataset_Random
+# [Fix] 导入 PEMS 数据集类
+from data_provider.data_loader import Dataset_Custom, Dataset_PEMS
 from torch.utils.data import DataLoader
 
 data_dict = {
-    'ETTh1': Dataset_ETT_hour,
-    'ETTh2': Dataset_ETT_hour,
-    'ETTm1': Dataset_ETT_minute,
-    'ETTm2': Dataset_ETT_minute,
     'custom': Dataset_Custom,
-    'random': Dataset_Random,
-    'Solar': Dataset_Solar,
-    'PEMS': Dataset_PEMS,
+    'ETTm1': Dataset_Custom, 
+    'ETTh1': Dataset_Custom,
+    'PEMS': Dataset_PEMS, # [Fix] 注册 PEMS 关键词
 }
-
 
 def data_provider(args, flag):
     Data = data_dict[args.data]
@@ -20,7 +15,7 @@ def data_provider(args, flag):
 
     if flag == 'test':
         shuffle_flag = False
-        drop_last = False
+        drop_last = True
         batch_size = args.batch_size
         freq = args.freq
     elif flag == 'pred':
@@ -28,23 +23,23 @@ def data_provider(args, flag):
         drop_last = False
         batch_size = 1
         freq = args.freq
-        Data = Dataset_Pred
+        Data = Dataset_Custom
     else:
         shuffle_flag = True
-        drop_last = False
-        batch_size = args.batch_size  # bsz for train and valid
+        drop_last = True
+        batch_size = args.batch_size
         freq = args.freq
 
     data_set = Data(
         root_path=args.root_path,
         data_path=args.data_path,
         flag=flag,
-        size=[args.seq_len, args.label_len, args.pred_len, args.enc_in],
+        size=[args.seq_len, args.label_len, args.pred_len],
         features=args.features,
         target=args.target,
         timeenc=timeenc,
         freq=freq,
-        seasonal_patterns=args.seasonal_patterns
+        seasonal_patterns=args.seasonal_patterns # 这里的调用需要 run.py 里的参数支持
     )
     print(flag, len(data_set))
     data_loader = DataLoader(

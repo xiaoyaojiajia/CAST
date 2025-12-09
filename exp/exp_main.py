@@ -1,6 +1,6 @@
 from data_provider.data_factory import data_provider
 from exp.exp_basic import Exp_Basic
-from models import CAST
+from models import CAST, SOFTS # 如果你想对比 SOFTS，可以保留 import SOFTS
 from utils.tools import EarlyStopping, adjust_learning_rate
 from utils.metrics import metric
 import torch
@@ -20,6 +20,7 @@ class Exp_Main(Exp_Basic):
     def _build_model(self):
         model_dict = {
             'CAST': CAST,
+            'SOFTS': SOFTS, # 注册 SOFTS 以便对比
         }
         model = model_dict[self.args.model].Model(self.args).float()
         if self.args.use_multi_gpu and self.args.use_gpu:
@@ -51,7 +52,12 @@ class Exp_Main(Exp_Basic):
                 dec_inp = torch.zeros_like(batch_y[:, -self.args.pred_len:, :]).float()
                 dec_inp = torch.cat([batch_y[:, :self.args.label_len, :], dec_inp], dim=1).float().to(self.device)
 
-                outputs, offsets = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
+                # [Robust] 兼容多返回值
+                ret = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
+                if isinstance(ret, tuple):
+                    outputs = ret[0]
+                else:
+                    outputs = ret
                 
                 f_dim = -1 if self.args.features == 'MS' else 0
                 outputs = outputs[:, -self.args.pred_len:, f_dim:]
@@ -79,6 +85,7 @@ class Exp_Main(Exp_Basic):
         model_optim = self._select_optimizer()
         criterion = self._select_criterion()
 
+        # CAST 特有的 Warmup 和正则化
         warmup_epochs = 3
         lambda_offset = 0.001
 
@@ -113,15 +120,26 @@ class Exp_Main(Exp_Basic):
                 dec_inp = torch.zeros_like(batch_y[:, -self.args.pred_len:, :]).float()
                 dec_inp = torch.cat([batch_y[:, :self.args.label_len, :], dec_inp], dim=1).float().to(self.device)
 
-                outputs, offsets = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
+                # [Robust] 兼容多返回值
+                offsets = None
+                ret = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
+                if isinstance(ret, tuple):
+                    outputs, offsets = ret
+                else:
+                    outputs = ret
 
                 f_dim = -1 if self.args.features == 'MS' else 0
                 outputs = outputs[:, -self.args.pred_len:, f_dim:]
                 batch_y = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device)
                 
                 pred_loss = criterion(outputs, batch_y)
-                reg_loss = torch.mean(torch.abs(offsets))
-                total_loss = pred_loss + lambda_offset * reg_loss
+                
+                # 如果有偏移量，计算正则化 Loss
+                if offsets is not None:
+                    reg_loss = torch.mean(torch.abs(offsets))
+                    total_loss = pred_loss + lambda_offset * reg_loss
+                else:
+                    total_loss = pred_loss
                 
                 train_loss.append(total_loss.item())
 
@@ -129,8 +147,9 @@ class Exp_Main(Exp_Basic):
                 model_optim.step()
 
                 if (i + 1) % 100 == 0:
-                    print("\titers: {0}, epoch: {1} | loss: {2:.7f} (reg: {3:.5f})".format(
-                        i + 1, epoch + 1, total_loss.item(), reg_loss.item()))
+                    reg_info = f"(reg: {reg_loss.item():.5f})" if offsets is not None else ""
+                    print("\titers: {0}, epoch: {1} | loss: {2:.7f} {3}".format(
+                        i + 1, epoch + 1, total_loss.item(), reg_info))
                     iter_count = 0
                     time_now = time.time()
 
@@ -176,7 +195,12 @@ class Exp_Main(Exp_Basic):
                 dec_inp = torch.zeros_like(batch_y[:, -self.args.pred_len:, :]).float()
                 dec_inp = torch.cat([batch_y[:, :self.args.label_len, :], dec_inp], dim=1).float().to(self.device)
 
-                outputs, _ = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
+                # [Robust] 兼容多返回值
+                ret = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
+                if isinstance(ret, tuple):
+                    outputs = ret[0]
+                else:
+                    outputs = ret
                 
                 f_dim = -1 if self.args.features == 'MS' else 0
                 outputs = outputs[:, -self.args.pred_len:, f_dim:]

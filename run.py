@@ -32,6 +32,9 @@ if __name__ == '__main__':
     parser.add_argument('--label_len', type=int, default=48, help='start token length')
     parser.add_argument('--pred_len', type=int, default=96, help='prediction sequence length')
     parser.add_argument('--inverse', action='store_true', help='inverse output data', default=False)
+    
+    # [Fix] 补全缺失的参数
+    parser.add_argument('--seasonal_patterns', type=str, default='Monthly', help='subset for M4')
 
     # Model Define
     parser.add_argument('--enc_in', type=int, default=7, help='encoder input size')
@@ -46,7 +49,6 @@ if __name__ == '__main__':
     parser.add_argument('--use_norm', type=int, default=1, help='use norm and denorm')
     parser.add_argument('--activation', type=str, default='gelu', help='activation')
     parser.add_argument('--embed', type=str, default='timeF', help='time features encoding')
-    parser.add_argument('--seasonal_patterns', type=str, default='Monthly', help='subset for M4')
 
     # Optimization
     parser.add_argument('--num_workers', type=int, default=10, help='data loader num workers')
