@@ -618,3 +618,78 @@ class Dataset_Pred(Dataset):
 
     def inverse_transform(self, data):
         return self.scaler.inverse_transform(data)
+    
+
+class Dataset_PEMS_Climate(Dataset):
+    def __init__(self, root_path, flag='train', size=None,
+                 features='M', data_path='PeMSD4_with_weather.npz',
+                 target='OT', scale=True, **kwargs):
+        # size [seq_len, label_len, pred_len]
+        self.seq_len = size[0]
+        self.label_len = size[1]
+        self.pred_len = size[2]
+        
+        assert flag in ['train', 'test', 'val']
+        self.set_type = {'train': 0, 'val': 1, 'test': 2}[flag]
+        self.scale = scale
+        self.root_path = root_path
+        self.data_path = data_path
+        self.__read_data__()
+
+    def __read_data__(self):
+        self.scaler = StandardScaler()
+        # 加载你脚本生成的 NPZ 文件
+        data_file = os.path.join(self.root_path, self.data_path)
+        loaded_data = np.load(data_file, allow_pickle=True)
+        
+        # data: [T, 500, 1], mark: [T, 7]
+        data_raw = loaded_data['data']
+        mark_raw = loaded_data['mark']
+
+        # 降维处理，由 [T, 500, 1] 变为 [T, 500]
+        if len(data_raw.shape) == 3:
+            data_raw = data_raw[:, :, 0]
+
+        # 数据集划分 (7:1:2)
+        T = len(data_raw)
+        num_train = int(T * 0.7)
+        num_test = int(T * 0.2)
+        num_vali = T - num_train - num_test
+        
+        border1s = [0, num_train - self.seq_len, T - num_test - self.seq_len]
+        border2s = [num_train, num_train + num_vali, T]
+        b1, b2 = border1s[self.set_type], border2s[self.set_type]
+
+        if self.scale:
+            # 仅对训练集进行 fit
+            train_data = data_raw[border1s[0]:border2s[0]]
+            self.scaler.fit(train_data)
+            self.data_x = self.scaler.transform(data_raw[b1:b2])
+        else:
+            self.data_x = data_raw[b1:b2]
+            
+        self.data_y = self.data_x
+        
+        # 对天气特征也进行独立标准化
+        self.mark_scaler = StandardScaler()
+        self.mark_scaler.fit(mark_raw[border1s[0]:border2s[0]])
+        self.data_stamp = self.mark_scaler.transform(mark_raw[b1:b2])
+
+    def __getitem__(self, index):
+        s_begin = index
+        s_end = s_begin + self.seq_len
+        r_begin = s_end - self.label_len
+        r_end = r_begin + self.label_len + self.pred_len
+
+        seq_x = self.data_x[s_begin:s_end]
+        seq_y = self.data_y[r_begin:r_end]
+        seq_x_mark = self.data_stamp[s_begin:s_end]
+        seq_y_mark = self.data_stamp[r_begin:r_end]
+
+        return seq_x, seq_y, seq_x_mark, seq_y_mark
+
+    def __len__(self):
+        return len(self.data_x) - self.seq_len - self.pred_len + 1
+    
+    def inverse_transform(self, data):
+        return self.scaler.inverse_transform(data)

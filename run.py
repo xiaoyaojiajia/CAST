@@ -33,8 +33,12 @@ if __name__ == '__main__':
     parser.add_argument('--pred_len', type=int, default=96, help='prediction sequence length')
     parser.add_argument('--inverse', action='store_true', help='inverse output data', default=False)
     
-    # [Fix] 补全缺失的参数
     parser.add_argument('--seasonal_patterns', type=str, default='Monthly', help='subset for M4')
+    
+    # [核心修改] 添加 weather_dim 和 ablation_mode
+    parser.add_argument('--weather_dim', type=int, default=4, help='dimension of weather/external features')
+    parser.add_argument('--ablation_mode', type=str, default='original', help='options:[original, concat, fixed]')
+    parser.add_argument('--output_attention', action='store_true', help='whether to output attention in ecoder')
 
     # Model Define
     parser.add_argument('--enc_in', type=int, default=7, help='encoder input size')
@@ -53,9 +57,9 @@ if __name__ == '__main__':
     # Optimization
     parser.add_argument('--num_workers', type=int, default=4, help='data loader num workers')
     parser.add_argument('--itr', type=int, default=1, help='experiments times')
-    parser.add_argument('--train_epochs', type=int, default=10, help='train epochs')
+    parser.add_argument('--train_epochs', type=int, default=50, help='train epochs')
     parser.add_argument('--batch_size', type=int, default=32, help='batch size of train input data')
-    parser.add_argument('--patience', type=int, default=3, help='early stopping patience')
+    parser.add_argument('--patience', type=int, default=10, help='early stopping patience')
     parser.add_argument('--learning_rate', type=float, default=0.0001, help='optimizer learning rate')
     parser.add_argument('--loss', type=str, default='mse', help='loss function')
     parser.add_argument('--lradj', type=str, default='type1', help='adjust learning rate')
@@ -84,6 +88,7 @@ if __name__ == '__main__':
 
     if args.is_training:
         for ii in range(args.itr):
+            # 将新的参数也加入到 setting 字符串中，防止实验结果覆盖
             setting = '{}_{}_{}_ft{}_sl{}_ll{}_pl{}_dm{}_el{}_df{}_eb{}_{}'.format(
                 args.model_id,
                 args.model,
@@ -96,6 +101,7 @@ if __name__ == '__main__':
                 args.e_layers,
                 args.d_ff,
                 args.enc_in,
+                # args.ablation_mode, # <--- 建议加在这里
                 ii)
 
             exp = Exp(args)
@@ -119,6 +125,7 @@ if __name__ == '__main__':
             args.e_layers,
             args.d_ff,
             args.enc_in,
+            # args.ablation_mode, # <--- 同样加在这里
             ii)
 
         exp = Exp(args)

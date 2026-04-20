@@ -1,6 +1,6 @@
 from data_provider.data_factory import data_provider
 from exp.exp_basic import Exp_Basic
-from models import CAST # 如果你想对比 SOFTS，可以保留 import SOFTS
+from models import CAST, CAST_Ablation
 from utils.tools import EarlyStopping, adjust_learning_rate
 from utils.metrics import metric
 import torch
@@ -10,17 +10,20 @@ import os
 import time
 import warnings
 import numpy as np
+import pandas as pd
 
 warnings.filterwarnings('ignore')
 
 class Exp_Main(Exp_Basic):
     def __init__(self, args):
         super(Exp_Main, self).__init__(args)
+        # [Log] 初始化训练时长
+        self.train_duration = 0
 
     def _build_model(self):
         model_dict = {
             'CAST': CAST,
-            # 'SOFTS': SOFTS, # 注册 SOFTS 以便对比
+            'CAST_Ablation': CAST_Ablation,
         }
         model = model_dict[self.args.model].Model(self.args).float()
         if self.args.use_multi_gpu and self.args.use_gpu:
@@ -79,7 +82,9 @@ class Exp_Main(Exp_Basic):
         if not os.path.exists(path):
             os.makedirs(path)
 
+        train_start_time = time.time()
         time_now = time.time()
+        
         train_steps = len(train_loader)
         early_stopping = EarlyStopping(patience=self.args.patience, verbose=True)
         model_optim = self._select_optimizer()
@@ -168,6 +173,9 @@ class Exp_Main(Exp_Basic):
 
             adjust_learning_rate(model_optim, epoch + 1, self.args)
 
+        self.train_duration = (time.time() - train_start_time) / 60.0
+        print(f"Training finished. Total time: {self.train_duration:.2f} mins")
+
         best_model_path = path + '/' + 'checkpoint.pth'
         self.model.load_state_dict(torch.load(best_model_path))
         return self.model
@@ -180,6 +188,11 @@ class Exp_Main(Exp_Basic):
 
         preds = []
         trues = []
+        
+        # [核心新增: 收集 Offset 和天气标签的容器]
+        all_offsets = []
+        all_weathers = []
+        
         folder_path = './test_results/' + setting + '/'
         if not os.path.exists(folder_path):
             os.makedirs(folder_path)
@@ -195,10 +208,12 @@ class Exp_Main(Exp_Basic):
                 dec_inp = torch.zeros_like(batch_y[:, -self.args.pred_len:, :]).float()
                 dec_inp = torch.cat([batch_y[:, :self.args.label_len, :], dec_inp], dim=1).float().to(self.device)
 
-                # [Robust] 兼容多返回值
+                # 兼容多返回值
+                offsets = None
                 ret = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
                 if isinstance(ret, tuple):
                     outputs = ret[0]
+                    offsets = ret[1]  # 获取 CADA 模块输出的 offsets
                 else:
                     outputs = ret
                 
@@ -206,13 +221,31 @@ class Exp_Main(Exp_Basic):
                 outputs = outputs[:, -self.args.pred_len:, f_dim:]
                 batch_y = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device)
                 
+                # [核心新增: 处理并保存本 Batch 的 Offset]
+                if offsets is not None:
+                    # offsets shape: [B, Groups, Seq_Len]
+                    # 计算每个样本的绝对偏移量均值: 取绝对值后在 Groups 和 Seq_Len 维度上求平均 -> [B]
+                    batch_offset_mean = torch.mean(torch.abs(offsets), dim=(1, 2)).detach().cpu().numpy()
+                    
+                    # 提取当前 Batch 的天气等级 (提取最后一个时间步的最后 5 列，即我们处理的 One-Hot)
+                    # 如果您的天气等级不是 5 个，请调整这里的 -5
+                    batch_weather = batch_x_mark[:, -1, -5:].detach().cpu().numpy() 
+                    
+                    all_offsets.append(batch_offset_mean)
+                    all_weathers.append(batch_weather)
+
                 outputs = outputs.detach().cpu().numpy()
                 batch_y = batch_y.detach().cpu().numpy()
                 
+                # 反归一化逻辑
                 if test_data.scale and self.args.inverse:
-                    shape = outputs.shape
-                    outputs = test_data.inverse_transform(outputs.squeeze(0)).reshape(shape)
-                    batch_y = test_data.inverse_transform(batch_y.squeeze(0)).reshape(shape)
+                    shape = outputs.shape 
+                    outputs_2d = outputs.reshape(-1, shape[-1])
+                    batch_y_2d = batch_y.reshape(-1, shape[-1])
+                    outputs_2d = test_data.inverse_transform(outputs_2d)
+                    batch_y_2d = test_data.inverse_transform(batch_y_2d)
+                    outputs = outputs_2d.reshape(shape)
+                    batch_y = batch_y_2d.reshape(shape)
         
                 preds.append(outputs)
                 trues.append(batch_y)
@@ -228,4 +261,14 @@ class Exp_Main(Exp_Basic):
         np.save(folder_path + 'metrics.npy', np.array([mae, mse, rmse, mape, mspe]))
         np.save(folder_path + 'pred.npy', preds)
         np.save(folder_path + 'true.npy', trues)
+        
+        # [核心新增: 保存收集到的 Offset 数据到硬盘]
+        if len(all_offsets) > 0:
+            np.save(folder_path + 'offsets_analysis.npy', {
+                'offsets': np.concatenate(all_offsets, axis=0),
+                'weathers': np.concatenate(all_weathers, axis=0)
+            })
+            print(f"Offset analysis data saved to {folder_path}offsets_analysis.npy")
+
+        # 原有的日志记录逻辑... (此处省略，保持您原有的 log_data 和 CSV 写入部分即可)
         return

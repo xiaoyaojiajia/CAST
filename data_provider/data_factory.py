@@ -1,12 +1,13 @@
-# [Fix] 导入 PEMS 数据集类
-from data_provider.data_loader import Dataset_Custom, Dataset_PEMS
+# [Fix] 导入 PEMS 数据集类（含气象融合）
+from data_provider.data_loader import Dataset_Custom, Dataset_PEMS, Dataset_PEMS_Climate
 from torch.utils.data import DataLoader
 
 data_dict = {
     'custom': Dataset_Custom,
     'ETTm1': Dataset_Custom, 
     'ETTh1': Dataset_Custom,
-    'PEMS': Dataset_PEMS, # [Fix] 注册 PEMS 关键词
+    'PEMS': Dataset_PEMS,  # 纯交通速度数据
+    'PEMS_Climate': Dataset_PEMS_Climate,  # 交通+气象融合数据
 }
 
 def data_provider(args, flag):
