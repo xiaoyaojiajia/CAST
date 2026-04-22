@@ -46,17 +46,26 @@ class Exp_Main(Exp_Basic):
         total_loss = []
         self.model.eval()
         with torch.no_grad():
-            for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(vali_loader):
+            for i, batch_data in enumerate(vali_loader):
+                # ✅ 处理可变长度的返回值
+                if len(batch_data) == 5:
+                    batch_x, batch_y, batch_x_mark, batch_y_mark_hist, batch_y_mark_future = batch_data
+                else:
+                    batch_x, batch_y, batch_x_mark, batch_y_mark_hist = batch_data
+                    batch_y_mark_future = None
+                
                 batch_x = batch_x.float().to(self.device)
                 batch_y = batch_y.float()
                 batch_x_mark = batch_x_mark.float().to(self.device)
-                batch_y_mark = batch_y_mark.float().to(self.device)
+                batch_y_mark_hist = batch_y_mark_hist.float().to(self.device)
+                if batch_y_mark_future is not None:
+                    batch_y_mark_future = batch_y_mark_future.float().to(self.device)
 
                 dec_inp = torch.zeros_like(batch_y[:, -self.args.pred_len:, :]).float()
                 dec_inp = torch.cat([batch_y[:, :self.args.label_len, :], dec_inp], dim=1).float().to(self.device)
 
                 # [Robust] 兼容多返回值
-                ret = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
+                ret = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark_hist, batch_y_mark_future)
                 if isinstance(ret, tuple):
                     outputs = ret[0]
                 else:
@@ -113,21 +122,30 @@ class Exp_Main(Exp_Basic):
             self.model.train()
             epoch_time = time.time()
             
-            for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(train_loader):
+            for i, batch_data in enumerate(train_loader):
                 iter_count += 1
                 model_optim.zero_grad()
+                
+                # ✅ 处理可变长度的返回值
+                if len(batch_data) == 5:
+                    batch_x, batch_y, batch_x_mark, batch_y_mark_hist, batch_y_mark_future = batch_data
+                else:
+                    batch_x, batch_y, batch_x_mark, batch_y_mark_hist = batch_data
+                    batch_y_mark_future = None
                 
                 batch_x = batch_x.float().to(self.device)
                 batch_y = batch_y.float().to(self.device)
                 batch_x_mark = batch_x_mark.float().to(self.device)
-                batch_y_mark = batch_y_mark.float().to(self.device)
+                batch_y_mark_hist = batch_y_mark_hist.float().to(self.device)
+                if batch_y_mark_future is not None:
+                    batch_y_mark_future = batch_y_mark_future.float().to(self.device)
 
                 dec_inp = torch.zeros_like(batch_y[:, -self.args.pred_len:, :]).float()
                 dec_inp = torch.cat([batch_y[:, :self.args.label_len, :], dec_inp], dim=1).float().to(self.device)
 
                 # [Robust] 兼容多返回值
                 offsets = None
-                ret = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
+                ret = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark_hist, batch_y_mark_future)
                 if isinstance(ret, tuple):
                     outputs, offsets = ret
                 else:
@@ -199,18 +217,27 @@ class Exp_Main(Exp_Basic):
 
         self.model.eval()
         with torch.no_grad():
-            for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(test_loader):
+            for i, batch_data in enumerate(test_loader):
+                # ✅ 处理可变长度的返回值
+                if len(batch_data) == 5:
+                    batch_x, batch_y, batch_x_mark, batch_y_mark_hist, batch_y_mark_future = batch_data
+                else:
+                    batch_x, batch_y, batch_x_mark, batch_y_mark_hist = batch_data
+                    batch_y_mark_future = None
+                
                 batch_x = batch_x.float().to(self.device)
                 batch_y = batch_y.float().to(self.device)
                 batch_x_mark = batch_x_mark.float().to(self.device)
-                batch_y_mark = batch_y_mark.float().to(self.device)
+                batch_y_mark_hist = batch_y_mark_hist.float().to(self.device)
+                if batch_y_mark_future is not None:
+                    batch_y_mark_future = batch_y_mark_future.float().to(self.device)
 
                 dec_inp = torch.zeros_like(batch_y[:, -self.args.pred_len:, :]).float()
                 dec_inp = torch.cat([batch_y[:, :self.args.label_len, :], dec_inp], dim=1).float().to(self.device)
 
                 # 兼容多返回值
                 offsets = None
-                ret = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
+                ret = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark_hist, batch_y_mark_future)
                 if isinstance(ret, tuple):
                     outputs = ret[0]
                     offsets = ret[1]  # 获取 CADA 模块输出的 offsets

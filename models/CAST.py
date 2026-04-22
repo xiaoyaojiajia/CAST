@@ -124,6 +124,7 @@ class Model(nn.Module):
         
         # 使用配置中传入的 weather_dim (默认为4，您的新脚本传入7)
         weather_dim = getattr(configs, 'weather_dim', 4)
+        self.use_future_weather = getattr(configs, 'use_future_weather', False)
             
         self.aligner = ClimateAwareDeformableAligner(
             c_in=configs.enc_in, 
@@ -147,8 +148,23 @@ class Model(nn.Module):
             ],
         )
         self.projection = nn.Linear(configs.d_model, configs.pred_len, bias=True)
+        
+        # ✅ 新增：未来天气融合模块
+        if self.use_future_weather:
+            self.future_weather_fusion = nn.Sequential(
+                nn.Linear(weather_dim, configs.d_model),
+                nn.GELU(),
+                nn.Linear(configs.d_model, configs.d_model)
+            )
+            
+            # 考虑未来天气的解码器
+            self.decoder_with_weather = nn.Sequential(
+                nn.Linear(configs.d_model + weather_dim, configs.d_model),
+                nn.GELU(),
+                nn.Linear(configs.d_model, configs.pred_len)
+            )
 
-    def forecast(self, x_enc, x_mark_enc, x_dec, x_mark_dec):
+    def forecast(self, x_enc, x_mark_enc, x_dec, x_mark_dec, x_mark_future=None):
         if self.use_norm:
             means = x_enc.mean(1, keepdim=True).detach()
             x_enc = x_enc - means
@@ -162,7 +178,22 @@ class Model(nn.Module):
         enc_out = self.enc_embedding(x_enc, x_mark_enc)
         enc_out, attns = self.encoder(enc_out, attn_mask=None)
         
-        dec_out = self.projection(enc_out).permute(0, 2, 1)[:, :, :N]
+        # ✅ 新增：融合未来天气
+        if self.use_future_weather and x_mark_future is not None:
+            # x_mark_future: [B, pred_len, weather_dim]
+            # 对未来天气进行聚合（取平均）
+            future_weather_agg = torch.mean(x_mark_future, dim=1)  # [B, weather_dim]
+            
+            # 扩展到所有变量维度
+            future_weather_expanded = future_weather_agg.unsqueeze(1).expand(
+                -1, enc_out.shape[1], -1
+            )  # [B, C, weather_dim]
+            
+            # 拼接并通过融合模块
+            enc_out_with_weather = torch.cat([enc_out, future_weather_expanded], dim=-1)
+            dec_out = self.decoder_with_weather(enc_out_with_weather).permute(0, 2, 1)[:, :, :N]
+        else:
+            dec_out = self.projection(enc_out).permute(0, 2, 1)[:, :, :N]
 
         if self.use_norm:
             dec_out = dec_out * (stdev[:, 0, :].unsqueeze(1).repeat(1, self.pred_len, 1))
@@ -170,6 +201,6 @@ class Model(nn.Module):
             
         return dec_out, offsets
 
-    def forward(self, x_enc, x_mark_enc, x_dec, x_mark_dec, mask=None):
-        dec_out, offsets = self.forecast(x_enc, x_mark_enc, x_dec, x_mark_dec)
+    def forward(self, x_enc, x_mark_enc, x_dec, x_mark_dec, x_mark_future=None, mask=None):
+        dec_out, offsets = self.forecast(x_enc, x_mark_enc, x_dec, x_mark_dec, x_mark_future)
         return dec_out[:, -self.pred_len:, :], offsets

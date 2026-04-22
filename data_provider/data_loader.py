@@ -683,10 +683,17 @@ class Dataset_PEMS_Climate(Dataset):
 
         seq_x = self.data_x[s_begin:s_end]
         seq_y = self.data_y[r_begin:r_end]
+        
+        # 历史天气：对应输入序列
         seq_x_mark = self.data_stamp[s_begin:s_end]
-        seq_y_mark = self.data_stamp[r_begin:r_end]
+        
+        # 历史天气标记（用于解码器初始化）
+        seq_y_mark_history = self.data_stamp[r_begin:r_begin+self.label_len]
+        
+        # ✅ 未来天气：对应预测时间窗口 [t, t+pred_len]
+        seq_y_mark_future = self.data_stamp[r_end-self.pred_len:r_end]
 
-        return seq_x, seq_y, seq_x_mark, seq_y_mark
+        return seq_x, seq_y, seq_x_mark, seq_y_mark_history, seq_y_mark_future
 
     def __len__(self):
         return len(self.data_x) - self.seq_len - self.pred_len + 1

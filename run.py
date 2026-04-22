@@ -38,6 +38,9 @@ if __name__ == '__main__':
     # [核心修改] 添加 weather_dim 和 ablation_mode
     parser.add_argument('--weather_dim', type=int, default=4, help='dimension of weather/external features')
     parser.add_argument('--ablation_mode', type=str, default='original', help='options:[original, concat, fixed]')
+    parser.add_argument('--use_future_weather', type=int, default=0, help='whether to use future weather in decoder: 0=no, 1=yes')
+    parser.add_argument('--has_weather', type=int, default=0, help='whether dataset has real weather data: 0=no, 1=yes')
+    parser.add_argument('--dataset_group', type=str, default='standard', help='dataset group: standard (no weather) or climate (with weather)')
     parser.add_argument('--output_attention', action='store_true', help='whether to output attention in ecoder')
 
     # Model Define
@@ -89,6 +92,63 @@ if __name__ == '__main__':
     if args.is_training:
         for ii in range(args.itr):
             # 将新的参数也加入到 setting 字符串中，防止实验结果覆盖
+            weather_suffix = f"_weather_future" if args.use_future_weather else ""
+            if args.has_weather:
+                setting = '{}_{}_{}_ft{}_sl{}_ll{}_pl{}_dm{}_el{}_df{}_eb{}{}_{}' .format(
+                    args.model_id,
+                    args.model,
+                    args.data,
+                    args.features,
+                    args.seq_len,
+                    args.label_len,
+                    args.pred_len,
+                    args.d_model,
+                    args.e_layers,
+                    args.d_ff,
+                    args.enc_in,
+                    weather_suffix,
+                    ii)
+            else:
+                setting = '{}_{}_{}_ft{}_sl{}_ll{}_pl{}_dm{}_el{}_df{}_eb{}_{}'.format(
+                    args.model_id,
+                    args.model,
+                    args.data,
+                    args.features,
+                    args.seq_len,
+                    args.label_len,
+                    args.pred_len,
+                    args.d_model,
+                    args.e_layers,
+                    args.d_ff,
+                    args.enc_in,
+                    ii)
+
+            exp = Exp(args)
+            print('>>>>>>>start training : {}>>>>>>>>>>>>>>>>>>>>>>>>>>'.format(setting))
+            exp.train(setting)
+
+            print('>>>>>>>testing : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
+            exp.test(setting)
+            torch.cuda.empty_cache()
+    else:
+        ii = 0
+        weather_suffix = f"_weather_future" if args.use_future_weather else ""
+        if args.has_weather:
+            setting = '{}_{}_{}_ft{}_sl{}_ll{}_pl{}_dm{}_el{}_df{}_eb{}{}_{}' .format(
+                args.model_id,
+                args.model,
+                args.data,
+                args.features,
+                args.seq_len,
+                args.label_len,
+                args.pred_len,
+                args.d_model,
+                args.e_layers,
+                args.d_ff,
+                args.enc_in,
+                weather_suffix,
+                ii)
+        else:
             setting = '{}_{}_{}_ft{}_sl{}_ll{}_pl{}_dm{}_el{}_df{}_eb{}_{}'.format(
                 args.model_id,
                 args.model,
@@ -101,32 +161,7 @@ if __name__ == '__main__':
                 args.e_layers,
                 args.d_ff,
                 args.enc_in,
-                # args.ablation_mode, # <--- 建议加在这里
                 ii)
-
-            exp = Exp(args)
-            print('>>>>>>>start training : {}>>>>>>>>>>>>>>>>>>>>>>>>>>'.format(setting))
-            exp.train(setting)
-
-            print('>>>>>>>testing : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
-            exp.test(setting)
-            torch.cuda.empty_cache()
-    else:
-        ii = 0
-        setting = '{}_{}_{}_ft{}_sl{}_ll{}_pl{}_dm{}_el{}_df{}_eb{}_{}'.format(
-            args.model_id,
-            args.model,
-            args.data,
-            args.features,
-            args.seq_len,
-            args.label_len,
-            args.pred_len,
-            args.d_model,
-            args.e_layers,
-            args.d_ff,
-            args.enc_in,
-            # args.ablation_mode, # <--- 同样加在这里
-            ii)
 
         exp = Exp(args)
         print('>>>>>>>testing : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
