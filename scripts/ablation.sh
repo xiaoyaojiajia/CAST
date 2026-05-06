@@ -3,7 +3,7 @@
 python -u run.py \
   --is_training 1 \
   --root_path ./dataset/PeMSD4/ \
-  --data_path PEMS04_2018_Fused.npz \
+  --data_path PEMS04_2018_Fused_Norm.npz \
   --model_id PEMS04_2018_WithWeather \
   --model CAST_Ablation \
   --ablation_mode concat \
@@ -15,7 +15,7 @@ python -u run.py \
   --enc_in 307 \
   --dec_in 307 \
   --c_out 307 \
-  --weather_dim 7 \
+  --weather_dim 12 \
   --d_model 64 \
   --d_core 64 \
   --batch_size 32 \
@@ -25,7 +25,7 @@ python -u run.py \
   python -u run.py \
   --is_training 1 \
   --root_path ./dataset/PeMSD4/ \
-  --data_path PEMS04_2018_Fused.npz \
+  --data_path PEMS04_2018_Fused_Norm.npz \
   --model_id PEMS04_2018_WithWeather \
   --model CAST_Ablation \
   --ablation_mode concat \
@@ -37,7 +37,7 @@ python -u run.py \
   --enc_in 307 \
   --dec_in 307 \
   --c_out 307 \
-  --weather_dim 7 \
+  --weather_dim 12 \
   --d_model 64 \
   --d_core 64 \
   --batch_size 32 \
@@ -47,7 +47,7 @@ python -u run.py \
 python -u run.py \
   --is_training 1 \
   --root_path ./dataset/PeMSD4/ \
-  --data_path PEMS04_2018_Fused.npz \
+  --data_path PEMS04_2018_Fused_Norm.npz \
   --model_id PEMS04_2018_WithWeather \
   --model CAST_Ablation \
   --ablation_mode concat \
@@ -59,7 +59,7 @@ python -u run.py \
   --enc_in 307 \
   --dec_in 307 \
   --c_out 307 \
-  --weather_dim 7 \
+  --weather_dim 12 \
   --d_model 64 \
   --d_core 64 \
   --batch_size 32 \
@@ -69,7 +69,7 @@ python -u run.py \
   python -u run.py \
   --is_training 1 \
   --root_path ./dataset/PeMSD4/ \
-  --data_path PEMS04_2018_Fused.npz \
+  --data_path PEMS04_2018_Fused_Norm.npz \
   --model_id PEMS04_2018_WithWeather \
   --model CAST_Ablation \
   --ablation_mode concat \
@@ -81,7 +81,7 @@ python -u run.py \
   --enc_in 307 \
   --dec_in 307 \
   --c_out 307 \
-  --weather_dim 7 \
+  --weather_dim 12 \
   --d_model 64 \
   --d_core 64 \
   --batch_size 32 \
@@ -91,7 +91,7 @@ python -u run.py \
 python -u run.py \
   --is_training 1 \
   --root_path ./dataset/PeMSD4/ \
-  --data_path PEMS04_2018_Fused.npz \
+  --data_path PEMS04_2018_Fused_Norm.npz \
   --model_id PEMS04_2018_WithWeather \
   --model CAST_Ablation \
   --ablation_mode fixed \
@@ -103,7 +103,7 @@ python -u run.py \
   --enc_in 307 \
   --dec_in 307 \
   --c_out 307 \
-  --weather_dim 7 \
+  --weather_dim 12 \
   --d_model 64 \
   --d_core 64 \
   --batch_size 32 \
@@ -113,7 +113,7 @@ python -u run.py \
   python -u run.py \
   --is_training 1 \
   --root_path ./dataset/PeMSD4/ \
-  --data_path PEMS04_2018_Fused.npz \
+  --data_path PEMS04_2018_Fused_Norm.npz \
   --model_id PEMS04_2018_WithWeather \
   --model CAST_Ablation \
   --ablation_mode fixed \
@@ -125,7 +125,7 @@ python -u run.py \
   --enc_in 307 \
   --dec_in 307 \
   --c_out 307 \
-  --weather_dim 7 \
+  --weather_dim 12 \
   --d_model 64 \
   --d_core 64 \
   --batch_size 32 \
@@ -135,7 +135,7 @@ python -u run.py \
 python -u run.py \
   --is_training 1 \
   --root_path ./dataset/PeMSD4/ \
-  --data_path PEMS04_2018_Fused.npz \
+  --data_path PEMS04_2018_Fused_Norm.npz \
   --model_id PEMS04_2018_WithWeather \
   --model CAST_Ablation \
   --ablation_mode fixed \
@@ -147,7 +147,7 @@ python -u run.py \
   --enc_in 307 \
   --dec_in 307 \
   --c_out 307 \
-  --weather_dim 7 \
+  --weather_dim 12 \
   --d_model 64 \
   --d_core 64 \
   --batch_size 32 \
@@ -157,7 +157,7 @@ python -u run.py \
   python -u run.py \
   --is_training 1 \
   --root_path ./dataset/PeMSD4/ \
-  --data_path PEMS04_2018_Fused.npz \
+  --data_path PEMS04_2018_Fused_Norm.npz \
   --model_id PEMS04_2018_WithWeather \
   --model CAST_Ablation \
   --ablation_mode fixed \
@@ -169,7 +169,7 @@ python -u run.py \
   --enc_in 307 \
   --dec_in 307 \
   --c_out 307 \
-  --weather_dim 7 \
+  --weather_dim 12 \
   --d_model 64 \
   --d_core 64 \
   --batch_size 32 \

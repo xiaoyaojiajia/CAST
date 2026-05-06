@@ -1,0 +1,121 @@
+Dear Dr. Ghulam Muhammad,
+
+The review of your manuscript, "CAST: A Climate-Aware Spatio-Temporal Deformable Transformer for Resilient Traffic Forecasting," T-ITS-26-02-1147, has been completed. The reviewers’ comments and those of the Associate Editor are copied below. Based on these comments and Associate Editor's recommendation, we will not be able to publish your manuscript in our transactions.
+
+Thank you for submitting your manuscript to the Transactions on Intelligent Transportation Systems.
+
+
+Sincerely,
+
+Simona Sacone
+Editor-in-Chief
+Transactions on Intelligent Transportation Systems
+____________________________________________________________
+
+Simona Sacone
+Editor-in-Chief
+IEEE Transactions on Intelligent Transportation Systems
+Dept. of Computer Science, Bioengineering, Robotics and Systems Engineering,
+University of Genova, Italy
+simona.sacone@unige.it
+_____________________________________________________________
+
+
+Reviewers' comments:
+
+Reviewer: 1
+
+Recommendation: Reject
+
+Comments:
+The paper has a interesting idea, but it still has several weakness. First, the novelty feels a bit limited, because it mainly combines the proposed CADA and GAD modules instead of showing a really strong new theoretical insight. Second, the experiments are not fully convincing: the paper says it builds a weather-enriched benchmark for PeMS03, but later reports results on four PeMS datasets with meteorological inputs, so the comparison setting is not very clear and may not be fully fair. Third, some numbers are inconsistant, for example the PeMS04 “w/o weather” result in Table I does not match the ablation result reported later. Also, the ablation study is only done on one dataset, and the qualitative evidence is mostly based on one “representative” case, so the robustness claim still feels a little weak. Finally, the writing and presentation need more polish, with issues like “Fig. ??” not fixed, repeated qualitative case-study discussion, and leftover editing text, which makes the paper look not fully ready.
+
+Additional Questions:
+Summary of Evaluation: Poor
+
+If the paper is rejected for publication, the authors should: Regard the paper as not publishable.
+
+textbox:
+
+Organization:
+
+Clarity:
+
+Length:
+
+References:
+
+Correctness:
+
+Significance: 1
+
+Originality: 1
+
+Attachments:
+
+If Survey Coverage:
+
+Contribution: 1
+
+What are the contributions of this paper?:
+
+What are some ways in which the paper could be improved? Please supply any additional important references that you feel the author omitted which should be noted in the paper.:
+
+If you are suggesting additional references they must be entered in the text box provided.  All suggestions must include full bibliographic information plus a DOI.
+
+
+If you are not suggesting any references, type N/A.: N/A
+
+
+Reviewer: 2
+
+Recommendation: Reject
+
+Comments:
+(There are no comments. Please check to see if comments were included as a file attachment with this e-mail or as an attachment in your Author Center.)
+
+Additional Questions:
+Summary of Evaluation: Fair
+
+If the paper is rejected for publication, the authors should: Regard the paper as not publishable.
+
+textbox:
+
+Organization: 3
+
+Clarity: 3
+
+Length: 3
+
+References: 3
+
+Correctness: 3
+
+Significance: 2
+
+Originality: 2
+
+Attachments: 3
+
+If Survey Coverage: 3
+
+Contribution: 2
+
+What are the contributions of this paper?: This manuscript proposes the Climate-Aware Spatio-Temporal Transformer (CAST) for traffic forecasting under extreme weather conditions. The architecture introduces a deformable alignment module to adjust historical traffic sequences using meteorological data , and a Global Aggregate-Distribute (GAD) mechanism to replace self-attention for computational efficiency.
+
+What are some ways in which the paper could be improved? Please supply any additional important references that you feel the author omitted which should be noted in the paper.: This paper must be rejected due to two fundamental structural flaws:
+1. Degenerate Spatial Topology: The GAD mechanism pools the entire traffic network into a single global vector that is identically broadcast to all nodes. This destroys spatial topology and completely ignores the physical dynamics of upstream and downstream traffic flow.
+2. Acausal Weather Forecasting: The model claims climate resilience but is blind to future weather. Meteorological data is only used to modulate historical inputs; future traffic states are generated via linear projection of past features, entirely ignoring the actual weather conditions during the prediction horizon.
+
+If you are suggesting additional references they must be entered in the text box provided.  All suggestions must include full bibliographic information plus a DOI.
+
+
+If you are not suggesting any references, type N/A.: N/A
+
+
+Please note that some reviewers may have attached more comments; please log into https://mc.manuscriptcentral.com/t-its to download them.
+
+Editor's comments:
+Editor
+Comments to the Author:
+I agree with the reviewers’ consensus recommendation to reject this submission, as it has serious issues that preclude acceptance for publication.

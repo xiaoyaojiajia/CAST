@@ -36,7 +36,7 @@ if __name__ == '__main__':
     parser.add_argument('--seasonal_patterns', type=str, default='Monthly', help='subset for M4')
     
     # [核心修改] 添加 weather_dim 和 ablation_mode
-    parser.add_argument('--weather_dim', type=int, default=4, help='dimension of weather/external features')
+    parser.add_argument('--weather_dim', type=int, default=12, help='dimension of weather/external features')
     parser.add_argument('--ablation_mode', type=str, default='original', help='options:[original, concat, fixed]')
     parser.add_argument('--use_future_weather', type=int, default=0, help='whether to use future weather in decoder: 0=no, 1=yes')
     parser.add_argument('--has_weather', type=int, default=0, help='whether dataset has real weather data: 0=no, 1=yes')

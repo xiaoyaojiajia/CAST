@@ -148,21 +148,19 @@ class Model(nn.Module):
             ],
         )
         self.projection = nn.Linear(configs.d_model, configs.pred_len, bias=True)
-        
-        # ✅ 新增：未来天气融合模块
+
+        # ✅ 空间拓扑双轨：密集图扩散(学习传感器关系) → GAD(全局交换)
+        self.node_embed = nn.Parameter(torch.randn(configs.enc_in, 16) * 0.01)
+        self.graph_gate = nn.Parameter(torch.zeros(1))
+
+        # ✅ 天气残差注入：轻量偏置修正，主路径不变
         if self.use_future_weather:
-            self.future_weather_fusion = nn.Sequential(
-                nn.Linear(weather_dim, configs.d_model),
+            self.weather_bias_net = nn.Sequential(
+                nn.Linear(weather_dim, 32),
                 nn.GELU(),
-                nn.Linear(configs.d_model, configs.d_model)
+                nn.Linear(32, 1),
             )
-            
-            # 考虑未来天气的解码器
-            self.decoder_with_weather = nn.Sequential(
-                nn.Linear(configs.d_model + weather_dim, configs.d_model),
-                nn.GELU(),
-                nn.Linear(configs.d_model, configs.pred_len)
-            )
+            self.weather_gate = nn.Parameter(torch.zeros(1))
 
     def forecast(self, x_enc, x_mark_enc, x_dec, x_mark_dec, x_mark_future=None):
         if self.use_norm:
@@ -176,24 +174,24 @@ class Model(nn.Module):
 
         _, _, N = x_enc.shape 
         enc_out = self.enc_embedding(x_enc, x_mark_enc)
+
+        # ✅ 空间拓扑双轨：密集图扩散(局部拓扑) → GAD(全局交换)
+        N_s = self.node_embed.shape[0]
+        A = torch.softmax(torch.relu(self.node_embed @ self.node_embed.T), dim=-1)
+        enc_s = enc_out[:, :N_s, :]
+        enc_s = enc_s + torch.tanh(self.graph_gate) * \
+                torch.einsum('ij,bjd->bid', A, enc_s)
+        enc_out = torch.cat([enc_s, enc_out[:, N_s:, :]], dim=1)
+
         enc_out, attns = self.encoder(enc_out, attn_mask=None)
-        
-        # ✅ 新增：融合未来天气
+
+        dec_out = self.projection(enc_out).permute(0, 2, 1)[:, :, :N]
+
+        # ✅ 天气残差：轻量偏置，主路径不变
         if self.use_future_weather and x_mark_future is not None:
-            # x_mark_future: [B, pred_len, weather_dim]
-            # 对未来天气进行聚合（取平均）
-            future_weather_agg = torch.mean(x_mark_future, dim=1)  # [B, weather_dim]
-            
-            # 扩展到所有变量维度
-            future_weather_expanded = future_weather_agg.unsqueeze(1).expand(
-                -1, enc_out.shape[1], -1
-            )  # [B, C, weather_dim]
-            
-            # 拼接并通过融合模块
-            enc_out_with_weather = torch.cat([enc_out, future_weather_expanded], dim=-1)
-            dec_out = self.decoder_with_weather(enc_out_with_weather).permute(0, 2, 1)[:, :, :N]
-        else:
-            dec_out = self.projection(enc_out).permute(0, 2, 1)[:, :, :N]
+            weather_bias = self.weather_bias_net(x_mark_future)
+            weather_bias = weather_bias.squeeze(-1).unsqueeze(-1).expand(-1, -1, N)
+            dec_out = dec_out + torch.tanh(self.weather_gate) * weather_bias
 
         if self.use_norm:
             dec_out = dec_out * (stdev[:, 0, :].unsqueeze(1).repeat(1, self.pred_len, 1))

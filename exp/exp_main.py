@@ -298,4 +298,36 @@ class Exp_Main(Exp_Basic):
             print(f"Offset analysis data saved to {folder_path}offsets_analysis.npy")
 
         # 原有的日志记录逻辑... (此处省略，保持您原有的 log_data 和 CSV 写入部分即可)
+        # [Log] 记录
+        log_data = {
+            'Model': getattr(self.args, 'model', 'N/A'),
+            'Dataset': getattr(self.args, 'data_path', 'N/A'),
+            'Hist_Len': getattr(self.args, 'seq_len', 'N/A'),
+            'Pred_Len': getattr(self.args, 'pred_len', 'N/A'),
+            'Train_Time(min)': round(self.train_duration, 2),
+            'MSE': round(float(mse), 4),
+            'MAE': round(float(mae), 4),
+            'RMSE': round(float(rmse), 4),
+            'MAPE': round(float(mape), 4),
+            'MSPE': round(float(mspe), 4),
+            'Ablation': getattr(self.args, 'ablation_mode', 'N/A')
+        }
+
+        log_str = (f"Model: {log_data['Model']} ({log_data['Ablation']}) | Data: {log_data['Dataset']} | "
+                   f"H/P: {log_data['Hist_Len']}/{log_data['Pred_Len']} | "
+                   f"Time: {log_data['Train_Time(min)']}m | "
+                   f"MSE: {log_data['MSE']} | MAE: {log_data['MAE']} | RMSE: {log_data['RMSE']}\n")
+        
+        with open("result3.txt", 'a', encoding='utf-8') as f:
+            f.write(log_str)
+
+        csv_path = 'results3.csv'
+        df = pd.DataFrame([log_data])
+        
+        if not os.path.exists(csv_path):
+            df.to_csv(csv_path, index=False, mode='w', encoding='utf-8-sig')
+        else:
+            df.to_csv(csv_path, index=False, mode='a', header=False, encoding='utf-8-sig')
+        
+        print(f"Testing finished. Results appended to {csv_path} and result3.txt")
         return

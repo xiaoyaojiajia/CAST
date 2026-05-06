@@ -65,3 +65,7 @@ Model: CAST | Data: PEMS04_2018_Fused.npz | H/P: 96/96 | Time: 0m | MSE: 5544.21
 Model: CAST (original) | Data: PEMS04_2018_Fused.npz | H/P: 96/96 | Time: 0m | MSE: 5544.2148 | MAE: 50.9217 | RMSE: 74.4595
 Model: CAST (original) | Data: PEMS04.npz | H/P: 96/96 | Time: 0m | MSE: 4771.4868 | MAE: 46.3075 | RMSE: 69.076
 Model: CAST (original) | Data: PEMS04_2018_Fused.npz | H/P: 96/12 | Time: 0m | MSE: 1333.7411 | MAE: 23.068 | RMSE: 36.5204
+Model: CAST (original) | Data: PEMS04_2018_Fused.npz | H/P: 96/12 | Time: 17.77m | MSE: 0.0918 | MAE: 0.199 | RMSE: 0.3031
+Model: CAST (original) | Data: PEMS04_2018_Fused.npz | H/P: 96/24 | Time: 14.42m | MSE: 0.1326 | MAE: 0.242 | RMSE: 0.3642
+Model: CAST (original) | Data: PEMS04_2018_Fused.npz | H/P: 96/48 | Time: 15.16m | MSE: 0.2169 | MAE: 0.3179 | RMSE: 0.4658
+Model: CAST (original) | Data: PEMS04_2018_Fused.npz | H/P: 96/96 | Time: 15.36m | MSE: 0.3644 | MAE: 0.4327 | RMSE: 0.6037
